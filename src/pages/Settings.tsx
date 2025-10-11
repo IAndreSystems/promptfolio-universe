@@ -11,21 +11,25 @@ const Settings = () => {
   const { toast } = useToast();
 
   const themePresets = [
-    { name: 'Futuristic', mode: 'futuristic' as const, primary: '270 100% 70%', accent: '190 100% 50%' },
-    { name: 'Minimalist', mode: 'minimalist' as const, primary: '220 13% 18%', accent: '220 9% 46%' },
-    { name: 'Artistic', mode: 'artistic' as const, primary: '340 75% 55%', accent: '45 93% 58%' },
+    { name: 'Futuristic', mode: 'futuristic' as const, primary_color: '270 100% 70%', accent_color: '190 100% 50%', font_family: 'Inter, system-ui, sans-serif' },
+    { name: 'Minimalist', mode: 'minimalist' as const, primary_color: '220 13% 18%', accent_color: '220 9% 46%', font_family: 'Inter, system-ui, sans-serif' },
+    { name: 'Artistic', mode: 'artistic' as const, primary_color: '340 75% 55%', accent_color: '45 93% 58%', font_family: 'Georgia, serif' },
   ];
 
-  const handleThemeChange = (preset: typeof themePresets[0]) => {
-    updateThemeSettings({
-      mode: preset.mode,
-      primaryColor: preset.primary,
-      accentColor: preset.accent,
-    });
-    toast({
-      title: "Theme updated",
-      description: `Switched to ${preset.name} theme`,
-    });
+  const handleThemeChange = async (preset: typeof themePresets[0]) => {
+    try {
+      await updateThemeSettings(preset);
+      toast({
+        title: "Theme updated",
+        description: `Switched to ${preset.name} theme`,
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message,
+      });
+    }
   };
 
   return (
@@ -67,11 +71,11 @@ const Settings = () => {
                       <div className="flex items-center gap-3 mb-4">
                         <div 
                           className="w-8 h-8 rounded-full"
-                          style={{ background: `hsl(${preset.primary})` }}
+                          style={{ background: `hsl(${preset.primary_color})` }}
                         />
                         <div 
                           className="w-8 h-8 rounded-full"
-                          style={{ background: `hsl(${preset.accent})` }}
+                          style={{ background: `hsl(${preset.accent_color})` }}
                         />
                       </div>
                       <h3 className="font-semibold text-lg">{preset.name}</h3>
@@ -87,7 +91,7 @@ const Settings = () => {
                   <Type className="w-5 h-5 mr-2 text-primary" />
                   Typography
                 </CardTitle>
-                <CardDescription>Current font: {themeSettings.fontFamily}</CardDescription>
+                <CardDescription>Current font: {themeSettings.font_family}</CardDescription>
               </CardHeader>
               <CardContent>
                 <Label className="text-sm text-muted-foreground">

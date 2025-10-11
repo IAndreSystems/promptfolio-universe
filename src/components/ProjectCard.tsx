@@ -15,13 +15,21 @@ const ProjectCard = ({ project }: ProjectCardProps) => {
   const { toast } = useToast();
   const [isEditOpen, setIsEditOpen] = useState(false);
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (confirm("Are you sure you want to delete this project?")) {
-      deleteProject(project.id);
-      toast({
-        title: "Project deleted",
-        description: "Your project has been removed",
-      });
+      try {
+        await deleteProject(project.id);
+        toast({
+          title: "Project deleted",
+          description: "Your project has been removed",
+        });
+      } catch (error: any) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: error.message,
+        });
+      }
     }
   };
 
@@ -29,7 +37,7 @@ const ProjectCard = ({ project }: ProjectCardProps) => {
     <>
       <div className="group relative aspect-square rounded-2xl overflow-hidden border border-border/50 hover:border-primary/50 transition-all duration-300">
         <img
-          src={project.image}
+          src={project.image_url || '/placeholder.svg'}
           alt={project.title}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
         />
@@ -49,11 +57,11 @@ const ProjectCard = ({ project }: ProjectCardProps) => {
             </div>
             
             <div className="flex gap-2">
-              {project.link && (
+              {project.project_url && (
                 <Button
                   size="sm"
                   variant="secondary"
-                  onClick={() => window.open(project.link, '_blank')}
+                  onClick={() => window.open(project.project_url, '_blank')}
                   className="bg-white/10 backdrop-blur-sm hover:bg-white/20"
                 >
                   <ExternalLink className="w-4 h-4" />

@@ -14,16 +14,17 @@ interface ProjectFormProps {
 const ProjectForm = ({ project, onSuccess }: ProjectFormProps) => {
   const { addProject, updateProject } = usePortfolio();
   const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
   
   const [formData, setFormData] = useState({
     title: project?.title || "",
     description: project?.description || "",
-    image: project?.image || "",
-    link: project?.link || "",
+    image_url: project?.image_url || "",
+    project_url: project?.project_url || "",
     category: project?.category || "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.title || !formData.description || !formData.category) {
@@ -35,21 +36,31 @@ const ProjectForm = ({ project, onSuccess }: ProjectFormProps) => {
       return;
     }
 
-    if (project) {
-      updateProject(project.id, formData);
+    setLoading(true);
+    try {
+      if (project) {
+        await updateProject(project.id, { ...formData, is_public: true });
+        toast({
+          title: "Project updated",
+          description: "Your changes have been saved",
+        });
+      } else {
+        await addProject({ ...formData, is_public: true });
+        toast({
+          title: "Project created",
+          description: "Your new project has been added",
+        });
+      }
+      onSuccess();
+    } catch (error: any) {
       toast({
-        title: "Project updated",
-        description: "Your changes have been saved",
+        variant: "destructive",
+        title: "Error",
+        description: error.message,
       });
-    } else {
-      addProject(formData);
-      toast({
-        title: "Project created",
-        description: "Your new project has been added",
-      });
+    } finally {
+      setLoading(false);
     }
-    
-    onSuccess();
   };
 
   return (
@@ -88,29 +99,29 @@ const ProjectForm = ({ project, onSuccess }: ProjectFormProps) => {
       </div>
 
       <div>
-        <Label htmlFor="image">Image URL</Label>
+        <Label htmlFor="image_url">Image URL</Label>
         <Input
-          id="image"
-          value={formData.image}
-          onChange={(e) => setFormData({ ...formData, image: e.target.value })}
+          id="image_url"
+          value={formData.image_url}
+          onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
           placeholder="https://example.com/image.jpg"
           className="bg-glass-bg border-glass-border"
         />
       </div>
 
       <div>
-        <Label htmlFor="link">Project Link</Label>
+        <Label htmlFor="project_url">Project Link</Label>
         <Input
-          id="link"
-          value={formData.link}
-          onChange={(e) => setFormData({ ...formData, link: e.target.value })}
+          id="project_url"
+          value={formData.project_url}
+          onChange={(e) => setFormData({ ...formData, project_url: e.target.value })}
           placeholder="https://your-project.com"
           className="bg-glass-bg border-glass-border"
         />
       </div>
 
-      <Button type="submit" className="w-full bg-gradient-primary hover:opacity-90 transition-opacity">
-        {project ? "Update Project" : "Create Project"}
+      <Button type="submit" className="w-full bg-gradient-primary hover:opacity-90 transition-opacity" disabled={loading}>
+        {loading ? "Saving..." : project ? "Update Project" : "Create Project"}
       </Button>
     </form>
   );

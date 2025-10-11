@@ -1,83 +1,210 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 export interface Project {
   id: string;
+  user_id: string;
   title: string;
   description: string;
-  image: string;
-  link: string;
+  image_url: string;
+  project_url: string;
   category: string;
-  createdAt: string;
+  github_repo?: string;
+  github_synced?: boolean;
+  is_public: boolean;
+  view_count?: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ThemeSettings {
+  id?: string;
+  user_id?: string;
   mode: 'futuristic' | 'minimalist' | 'artistic';
-  primaryColor: string;
-  accentColor: string;
-  fontFamily: string;
+  primary_color: string;
+  accent_color: string;
+  font_family: string;
 }
 
 interface PortfolioContextType {
   projects: Project[];
-  addProject: (project: Omit<Project, 'id' | 'createdAt'>) => void;
-  updateProject: (id: string, project: Partial<Project>) => void;
-  deleteProject: (id: string) => void;
+  addProject: (project: Omit<Project, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  updateProject: (id: string, project: Partial<Project>) => Promise<void>;
+  deleteProject: (id: string) => Promise<void>;
+  syncGitHub: () => Promise<void>;
   themeSettings: ThemeSettings;
-  updateThemeSettings: (settings: Partial<ThemeSettings>) => void;
+  updateThemeSettings: (settings: Partial<ThemeSettings>) => Promise<void>;
+  loading: boolean;
 }
 
 const PortfolioContext = createContext<PortfolioContextType | undefined>(undefined);
 
 const defaultTheme: ThemeSettings = {
   mode: 'futuristic',
-  primaryColor: '270 100% 70%',
-  accentColor: '190 100% 50%',
-  fontFamily: 'Inter, system-ui, sans-serif',
+  primary_color: '270 100% 70%',
+  accent_color: '190 100% 50%',
+  font_family: 'Inter, system-ui, sans-serif',
 };
 
 export const PortfolioProvider = ({ children }: { children: ReactNode }) => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [themeSettings, setThemeSettings] = useState<ThemeSettings>(defaultTheme);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
   useEffect(() => {
-    const savedProjects = localStorage.getItem('promptfolio-projects');
-    const savedTheme = localStorage.getItem('promptfolio-theme');
+    if (user) {
+      loadUserData();
+    } else {
+      setProjects([]);
+      setThemeSettings(defaultTheme);
+      setLoading(false);
+    }
+  }, [user]);
+
+  const loadUserData = async () => {
+    if (!user) return;
     
-    if (savedProjects) {
-      setProjects(JSON.parse(savedProjects));
+    setLoading(true);
+    try {
+      // Load projects
+      const { data: projectsData } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      
+      if (projectsData) {
+        setProjects(projectsData);
+      }
+
+      // Load theme settings
+      const { data: themeData } = await supabase
+        .from('theme_settings')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (themeData) {
+        setThemeSettings({
+          id: themeData.id,
+          user_id: themeData.user_id,
+          mode: themeData.mode as 'futuristic' | 'minimalist' | 'artistic',
+          primary_color: themeData.primary_color,
+          accent_color: themeData.accent_color,
+          font_family: themeData.font_family,
+        });
+      }
+    } catch (error) {
+      console.error('Error loading user data:', error);
+    } finally {
+      setLoading(false);
     }
-    if (savedTheme) {
-      setThemeSettings(JSON.parse(savedTheme));
-    }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem('promptfolio-projects', JSON.stringify(projects));
-  }, [projects]);
-
-  useEffect(() => {
-    localStorage.setItem('promptfolio-theme', JSON.stringify(themeSettings));
-  }, [themeSettings]);
-
-  const addProject = (project: Omit<Project, 'id' | 'createdAt'>) => {
-    const newProject: Project = {
-      ...project,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString(),
-    };
-    setProjects([...projects, newProject]);
   };
 
-  const updateProject = (id: string, updatedProject: Partial<Project>) => {
-    setProjects(projects.map(p => p.id === id ? { ...p, ...updatedProject } : p));
+  const addProject = async (project: Omit<Project, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
+    if (!user) throw new Error('User must be logged in');
+
+    const { data, error } = await supabase
+      .from('projects')
+      .insert({
+        ...project,
+        user_id: user.id,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    if (data) {
+      setProjects([data, ...projects]);
+    }
   };
 
-  const deleteProject = (id: string) => {
+  const updateProject = async (id: string, updatedProject: Partial<Project>) => {
+    if (!user) throw new Error('User must be logged in');
+
+    const { data, error } = await supabase
+      .from('projects')
+      .update(updatedProject)
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    if (data) {
+      setProjects(projects.map(p => p.id === id ? data : p));
+    }
+  };
+
+  const deleteProject = async (id: string) => {
+    if (!user) throw new Error('User must be logged in');
+
+    const { error } = await supabase
+      .from('projects')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', user.id);
+
+    if (error) throw error;
     setProjects(projects.filter(p => p.id !== id));
   };
 
-  const updateThemeSettings = (settings: Partial<ThemeSettings>) => {
-    setThemeSettings({ ...themeSettings, ...settings });
+  const syncGitHub = async () => {
+    if (!user) throw new Error('User must be logged in');
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error('No session');
+
+    const response = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/github-sync`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        }
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'GitHub sync failed');
+    }
+
+    // Reload projects after sync
+    await loadUserData();
+  };
+
+  const updateThemeSettings = async (settings: Partial<ThemeSettings>) => {
+    if (!user) throw new Error('User must be logged in');
+
+    const updatedSettings = { ...themeSettings, ...settings };
+
+    const { data, error } = await supabase
+      .from('theme_settings')
+      .upsert({
+        user_id: user.id,
+        mode: updatedSettings.mode,
+        primary_color: updatedSettings.primary_color,
+        accent_color: updatedSettings.accent_color,
+        font_family: updatedSettings.font_family,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    if (data) {
+      setThemeSettings({
+        id: data.id,
+        user_id: data.user_id,
+        mode: data.mode as 'futuristic' | 'minimalist' | 'artistic',
+        primary_color: data.primary_color,
+        accent_color: data.accent_color,
+        font_family: data.font_family,
+      });
+    }
   };
 
   return (
@@ -86,8 +213,10 @@ export const PortfolioProvider = ({ children }: { children: ReactNode }) => {
       addProject,
       updateProject,
       deleteProject,
+      syncGitHub,
       themeSettings,
       updateThemeSettings,
+      loading,
     }}>
       {children}
     </PortfolioContext.Provider>
