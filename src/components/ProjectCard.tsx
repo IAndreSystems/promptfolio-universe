@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { ExternalLink, Pencil, Trash2 } from "lucide-react";
+import { ExternalLink, Pencil, Trash2, Linkedin } from "lucide-react";
 import { Project, usePortfolio } from "@/contexts/PortfolioContext";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import ProjectForm from "./ProjectForm";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useAnalytics } from "@/hooks/useAnalytics";
 
 interface ProjectCardProps {
   project: Project;
@@ -13,6 +15,7 @@ interface ProjectCardProps {
 const ProjectCard = ({ project }: ProjectCardProps) => {
   const { deleteProject } = usePortfolio();
   const { toast } = useToast();
+  const { trackEvent } = useAnalytics();
   const [isEditOpen, setIsEditOpen] = useState(false);
 
   const handleDelete = async () => {
@@ -31,6 +34,27 @@ const ProjectCard = ({ project }: ProjectCardProps) => {
         });
       }
     }
+  };
+
+  const handleLinkedInShare = async () => {
+    const shareUrl = encodeURIComponent(project.project_url || window.location.href);
+    const shareTitle = encodeURIComponent(project.title);
+    const shareDescription = encodeURIComponent(project.description.slice(0, 200));
+    
+    const linkedInUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${shareUrl}&title=${shareTitle}&summary=${shareDescription}`;
+    
+    window.open(linkedInUrl, '_blank', 'width=600,height=600');
+    
+    // Track share event
+    await trackEvent('linkedin_share', {
+      project_id: project.id,
+      project_title: project.title,
+    });
+
+    toast({
+      title: "Opening LinkedIn",
+      description: "Share your project with your network",
+    });
   };
 
   return (
@@ -67,6 +91,14 @@ const ProjectCard = ({ project }: ProjectCardProps) => {
                   <ExternalLink className="w-4 h-4" />
                 </Button>
               )}
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={handleLinkedInShare}
+                className="bg-white/10 backdrop-blur-sm hover:bg-white/20"
+              >
+                <Linkedin className="w-4 h-4" />
+              </Button>
               <Button
                 size="sm"
                 variant="secondary"

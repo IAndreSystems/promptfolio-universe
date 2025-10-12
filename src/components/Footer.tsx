@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Sparkles, Github, Twitter, Instagram } from "lucide-react";
+import { Sparkles, Github, Linkedin, Instagram } from "lucide-react";
 
 const Footer = () => {
   return (
@@ -62,13 +62,13 @@ const Footer = () => {
           </p>
           
           <div className="flex items-center gap-4">
-            <a href="#" className="p-2 rounded-lg hover:bg-primary/10 transition-colors">
-              <Twitter className="w-5 h-5 text-muted-foreground hover:text-primary transition-colors" />
+            <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg hover:bg-primary/10 transition-colors">
+              <Linkedin className="w-5 h-5 text-muted-foreground hover:text-primary transition-colors" />
             </a>
-            <a href="#" className="p-2 rounded-lg hover:bg-primary/10 transition-colors">
+            <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg hover:bg-primary/10 transition-colors">
               <Github className="w-5 h-5 text-muted-foreground hover:text-primary transition-colors" />
             </a>
-            <a href="#" className="p-2 rounded-lg hover:bg-primary/10 transition-colors">
+            <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg hover:bg-primary/10 transition-colors">
               <Instagram className="w-5 h-5 text-muted-foreground hover:text-primary transition-colors" />
             </a>
           </div>

@@ -15,7 +15,16 @@ serve(async (req) => {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(
-        JSON.stringify({ error: "Authorization required" }),
+        JSON.stringify({ error: "Authentication required" }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Extract token for validation
+    const token = authHeader.replace('Bearer ', '');
+    if (!token || token.length < 20) {
+      return new Response(
+        JSON.stringify({ error: "Invalid authentication token" }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -40,11 +49,14 @@ serve(async (req) => {
       .from('profiles')
       .select('github_username')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
 
     if (!profile?.github_username) {
       return new Response(
-        JSON.stringify({ error: "GitHub username not configured in profile" }),
+        JSON.stringify({ 
+          error: "GitHub username not configured in profile",
+          requiresSetup: true
+        }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -61,58 +73,35 @@ serve(async (req) => {
     );
 
     if (!githubResponse.ok) {
-      throw new Error(`GitHub API error: ${githubResponse.status}`);
+      const errorData = await githubResponse.json().catch(() => ({}));
+      return new Response(
+        JSON.stringify({ 
+          error: `GitHub API error: ${githubResponse.status}`,
+          details: errorData
+        }),
+        { status: githubResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const repos = await githubResponse.json();
-
-    // Sync repositories to projects table
-    let synced = 0;
-    let errors = 0;
-
-    for (const repo of repos) {
-      if (repo.fork) continue; // Skip forked repos
-
-      // Check if project already exists
-      const { data: existing } = await supabase
-        .from('projects')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('github_repo', repo.html_url)
-        .single();
-
-      if (!existing) {
-        const { error: insertError } = await supabase
-          .from('projects')
-          .insert({
-            user_id: user.id,
-            title: repo.name,
-            description: repo.description || '',
-            project_url: repo.homepage || repo.html_url,
-            github_repo: repo.html_url,
-            github_synced: true,
-            category: repo.language || 'Other',
-            is_public: true
-          });
-
-        if (insertError) {
-          console.error('Error inserting project:', insertError);
-          errors++;
-        } else {
-          synced++;
-        }
-      }
-    }
-
+    
+    // Return repos for client-side selection instead of auto-importing
     return new Response(
       JSON.stringify({ 
         success: true, 
-        synced, 
-        errors,
-        message: `Synced ${synced} repositories from GitHub`
+        repos: repos.map((repo: any) => ({
+          id: repo.id,
+          name: repo.name,
+          description: repo.description,
+          html_url: repo.html_url,
+          homepage: repo.homepage,
+          language: repo.language,
+          stargazers_count: repo.stargazers_count,
+        }))
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
+
 
   } catch (error) {
     console.error("Error in github-sync:", error);

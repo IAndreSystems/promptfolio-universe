@@ -6,21 +6,79 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Rate limiting map (in production, use Redis or similar)
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+
+const checkRateLimit = (userId: string): boolean => {
+  const now = Date.now();
+  const userLimit = rateLimitMap.get(userId);
+  
+  if (!userLimit || now > userLimit.resetTime) {
+    rateLimitMap.set(userId, { count: 1, resetTime: now + 60000 }); // 1 minute window
+    return true;
+  }
+  
+  if (userLimit.count >= 10) {
+    return false; // 10 requests per minute limit
+  }
+  
+  userLimit.count++;
+  return true;
+};
+
+const sanitizeInput = (input: string): string => {
+  // Remove potential prompt injection patterns
+  return input
+    .replace(/system:/gi, '')
+    .replace(/assistant:/gi, '')
+    .replace(/\[INST\]/gi, '')
+    .replace(/\[\/INST\]/gi, '')
+    .trim()
+    .slice(0, 2000); // Max 2000 characters
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { prompt, saveStory, title } = await req.json();
+    const authHeader = req.headers.get('Authorization');
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader || '' } } }
+    );
+
+    const { data: { user } } = await supabase.auth.getUser();
+    const userId = user?.id || 'anonymous';
+
+    // Rate limiting
+    if (!checkRateLimit(userId)) {
+      return new Response(
+        JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), 
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { prompt, saveStory, title, stream = false } = await req.json();
     
     if (!prompt) {
-      throw new Error('Prompt is required');
+      return new Response(
+        JSON.stringify({ error: "Prompt is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
+
+    // Sanitize input
+    const sanitizedPrompt = sanitizeInput(prompt);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+      return new Response(
+        JSON.stringify({ error: "AI service not configured" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Call Lovable AI Gateway
@@ -37,55 +95,50 @@ serve(async (req) => {
             role: "system", 
             content: "You are a creative storytelling assistant. Generate engaging, well-structured content based on the user's prompt. Be creative, inspiring, and professional."
           },
-          { role: "user", content: prompt }
+          { role: "user", content: sanitizedPrompt }
         ],
+        stream: stream,
       }),
     });
 
     if (!aiResponse.ok) {
-      if (aiResponse.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), 
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+      const statusCode = aiResponse.status;
+      let errorMessage = "AI generation failed";
+      
+      if (statusCode === 429) {
+        errorMessage = "Rate limit exceeded. Please try again later.";
+      } else if (statusCode === 402) {
+        errorMessage = "Payment required. Please add credits to your workspace.";
+      } else if (statusCode === 401) {
+        errorMessage = "Authentication failed.";
       }
-      if (aiResponse.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Payment required. Please add credits to your workspace." }), 
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      const errorText = await aiResponse.text();
-      console.error("AI gateway error:", aiResponse.status, errorText);
-      throw new Error("AI generation failed");
+      
+      console.error("AI gateway error:", statusCode, await aiResponse.text());
+      return new Response(
+        JSON.stringify({ error: errorMessage }), 
+        { status: statusCode, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // If streaming requested, return stream directly
+    if (stream) {
+      return new Response(aiResponse.body, {
+        headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+      });
     }
 
     const data = await aiResponse.json();
     const content = data.choices?.[0]?.message?.content;
 
     if (!content) {
-      throw new Error("No content generated");
+      return new Response(
+        JSON.stringify({ error: "No content generated" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Save story if requested
-    if (saveStory) {
-      const authHeader = req.headers.get('Authorization');
-      if (!authHeader) {
-        return new Response(
-          JSON.stringify({ content, saved: false, message: "Login required to save stories" }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      const supabase = createClient(
-        Deno.env.get('SUPABASE_URL') ?? '',
-        Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-        { global: { headers: { Authorization: authHeader } } }
-      );
-
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (user) {
+    if (saveStory && user) {
         const { error: insertError } = await supabase
           .from('stories')
           .insert({
@@ -104,11 +157,10 @@ serve(async (req) => {
           );
         }
 
-        return new Response(
-          JSON.stringify({ content, saved: true }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+      return new Response(
+        JSON.stringify({ content, saved: true }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     return new Response(

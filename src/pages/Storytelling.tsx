@@ -2,31 +2,33 @@ import { useState } from "react";
 import { Sparkles, Wand2 } from "lucide-react";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
+import StoryActions from "@/components/StoryActions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const promptTemplates = [
   {
     title: "Project Story",
     description: "Generate an inspiring story about your project",
-    prompt: "Write an inspiring story about a creative project called '{title}'. The project is about {description}. Make it engaging and showcase the creative journey.",
+    prompt: "Write an inspiring story about a creative project. Make it engaging and showcase the creative journey.",
   },
   {
     title: "Artist Bio",
     description: "Create a compelling artist biography",
-    prompt: "Write a professional and compelling biography for a creative professional who specializes in {specialty}. Highlight their unique approach and vision.",
+    prompt: "Write a professional and compelling biography for a creative professional. Highlight their unique approach and vision.",
   },
   {
     title: "Project Description",
     description: "Enhance your project description with AI",
-    prompt: "Enhance and expand this project description to make it more engaging and professional: {description}",
+    prompt: "Enhance and expand this project description to make it more engaging and professional.",
   },
   {
     title: "Vision Statement",
     description: "Craft your creative vision statement",
-    prompt: "Create an inspiring vision statement for a creative professional focused on {focus}. Make it bold and memorable.",
+    prompt: "Create an inspiring vision statement for a creative professional. Make it bold and memorable.",
   },
 ];
 
@@ -36,6 +38,7 @@ const Storytelling = () => {
   const [customPrompt, setCustomPrompt] = useState("");
   const [generatedContent, setGeneratedContent] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [usedPrompt, setUsedPrompt] = useState("");
 
   const handleGenerate = async () => {
     const prompt = customPrompt || selectedTemplate;
@@ -49,16 +52,49 @@ const Storytelling = () => {
     }
 
     setIsGenerating(true);
+    setUsedPrompt(prompt);
     
-    // Mock AI generation (replace with real AI integration)
-    setTimeout(() => {
-      setGeneratedContent(`This is a generated response based on your prompt. In a real implementation, this would connect to an AI service like Lovable AI to generate creative content.\n\nYour prompt: "${prompt}"\n\nThe AI would analyze your request and create compelling, professional content tailored to your needs.`);
-      setIsGenerating(false);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-storytelling`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session?.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ prompt, stream: false }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to generate content');
+      }
+
+      const data = await response.json();
+      setGeneratedContent(data.content);
+      
       toast({
         title: "Content generated!",
         description: "Your AI-powered content is ready",
       });
-    }, 2000);
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message,
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleDiscard = () => {
+    setGeneratedContent("");
+    setUsedPrompt("");
   };
 
   return (
@@ -133,9 +169,11 @@ const Storytelling = () => {
               
               <div className="bg-glass-bg border border-glass-border rounded-lg p-6 min-h-[400px]">
                 {generatedContent ? (
-                  <div className="prose prose-invert max-w-none">
-                    <p className="whitespace-pre-wrap">{generatedContent}</p>
-                  </div>
+                  <Textarea
+                    value={generatedContent}
+                    onChange={(e) => setGeneratedContent(e.target.value)}
+                    className="min-h-[350px] bg-transparent border-none resize-none focus:ring-0"
+                  />
                 ) : (
                   <div className="flex items-center justify-center h-full text-muted-foreground">
                     <p>Your generated content will appear here</p>
@@ -144,19 +182,13 @@ const Storytelling = () => {
               </div>
 
               {generatedContent && (
-                <Button
-                  variant="outline"
-                  className="w-full mt-4"
-                  onClick={() => {
-                    navigator.clipboard.writeText(generatedContent);
-                    toast({
-                      title: "Copied!",
-                      description: "Content copied to clipboard",
-                    });
-                  }}
-                >
-                  Copy to Clipboard
-                </Button>
+                <div className="mt-4">
+                  <StoryActions
+                    content={generatedContent}
+                    prompt={usedPrompt}
+                    onDiscard={handleDiscard}
+                  />
+                </div>
               )}
             </div>
           </div>

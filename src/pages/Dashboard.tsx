@@ -1,16 +1,72 @@
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, RefreshCw, Github } from "lucide-react";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import ProjectCard from "@/components/ProjectCard";
 import ProjectForm from "@/components/ProjectForm";
+import GitHubSyncModal from "@/components/GitHubSyncModal";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { usePortfolio } from "@/contexts/PortfolioContext";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const Dashboard = () => {
   const { projects } = usePortfolio();
+  const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncModalOpen, setSyncModalOpen] = useState(false);
+  const [githubRepos, setGithubRepos] = useState([]);
+
+  const handleGitHubSync = async () => {
+    setIsSyncing(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/github-sync`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session?.access_token}`,
+            'Content-Type': 'application/json',
+          }
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        if (error.requiresSetup) {
+          toast({
+            title: "GitHub setup required",
+            description: "Please add your GitHub username in Settings",
+            variant: "destructive",
+          });
+        } else {
+          throw new Error(error.error);
+        }
+        return;
+      }
+
+      const data = await response.json();
+      setGithubRepos(data.repos || []);
+      setSyncModalOpen(true);
+      
+      toast({
+        title: "Repositories fetched",
+        description: `Found ${data.repos?.length || 0} repositories`,
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Sync failed",
+        description: error.message,
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -28,13 +84,32 @@ const Dashboard = () => {
               </p>
             </div>
             
-            <Button 
-              onClick={() => setIsDialogOpen(true)}
-              className="bg-gradient-primary hover:opacity-90 transition-opacity"
-            >
-              <Plus className="w-5 h-5 mr-2" />
-              New Project
-            </Button>
+            <div className="flex gap-3">
+              <Button 
+                onClick={handleGitHubSync}
+                disabled={isSyncing}
+                variant="outline"
+              >
+                {isSyncing ? (
+                  <>
+                    <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
+                    Syncing...
+                  </>
+                ) : (
+                  <>
+                    <Github className="w-5 h-5 mr-2" />
+                    Sync GitHub
+                  </>
+                )}
+              </Button>
+              <Button 
+                onClick={() => setIsDialogOpen(true)}
+                className="bg-gradient-primary hover:opacity-90 transition-opacity"
+              >
+                <Plus className="w-5 h-5 mr-2" />
+                New Project
+              </Button>
+            </div>
           </div>
 
           {projects.length === 0 ? (
@@ -66,6 +141,12 @@ const Dashboard = () => {
           <ProjectForm onSuccess={() => setIsDialogOpen(false)} />
         </DialogContent>
       </Dialog>
+
+      <GitHubSyncModal
+        open={syncModalOpen}
+        onOpenChange={setSyncModalOpen}
+        repos={githubRepos}
+      />
 
       <Footer />
     </div>

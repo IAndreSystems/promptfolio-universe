@@ -1,10 +1,18 @@
 import { Button } from "@/components/ui/button";
-import { Sparkles, Menu } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
+import { Sparkles, Menu, LogOut } from "lucide-react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 
 const Navigation = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
   const isHome = location.pathname === "/";
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 backdrop-blur-xl bg-background/80">
@@ -48,14 +56,35 @@ const Navigation = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" className="hidden md:inline-flex">
-              Sign In
-            </Button>
-            <Link to="/dashboard">
-              <Button size="sm" className="bg-gradient-primary hover:opacity-90 transition-opacity">
-                Get Started
-              </Button>
-            </Link>
+            {user ? (
+              <>
+                <span className="text-sm text-muted-foreground hidden md:inline">
+                  {user.email}
+                </span>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={handleSignOut}
+                  className="hidden md:inline-flex"
+                >
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Sign Out
+                </Button>
+              </>
+            ) : (
+              <>
+                <Link to="/auth">
+                  <Button variant="ghost" size="sm" className="hidden md:inline-flex">
+                    Sign In
+                  </Button>
+                </Link>
+                <Link to="/auth">
+                  <Button size="sm" className="bg-gradient-primary hover:opacity-90 transition-opacity">
+                    Get Started
+                  </Button>
+                </Link>
+              </>
+            )}
             <Button variant="ghost" size="icon" className="md:hidden">
               <Menu className="w-5 h-5" />
             </Button>
