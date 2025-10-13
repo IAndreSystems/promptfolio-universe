@@ -96,7 +96,7 @@ const StoryActions = ({ content, prompt, onDiscard }: StoryActionsProps) => {
       </div>
 
       <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
-        <DialogContent className="bg-glass-bg border-glass-border">
+        <DialogContent className="border-glass-border">
           <DialogHeader>
             <DialogTitle>Save Story</DialogTitle>
           </DialogHeader>
@@ -109,7 +109,7 @@ const StoryActions = ({ content, prompt, onDiscard }: StoryActionsProps) => {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Enter a title for your story"
-                className="bg-glass-bg border-glass-border"
+                className="border-glass-border"
               />
             </div>
 
