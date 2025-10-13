@@ -72,6 +72,14 @@ serve(async (req) => {
 
     // Sanitize input
     const sanitizedPrompt = sanitizeInput(prompt);
+    
+    // Check if prompt is empty after sanitization
+    if (!sanitizedPrompt || sanitizedPrompt.trim().length === 0) {
+      return new Response(
+        JSON.stringify({ error: "Prompt empty after sanitization" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -139,13 +147,14 @@ serve(async (req) => {
 
     // Save story if requested
     if (saveStory && user) {
+        const preview = content.slice(0, 160);
         const { error: insertError } = await supabase
           .from('stories')
           .insert({
             user_id: user.id,
             title: title || 'Untitled Story',
             content,
-            prompt_used: prompt,
+            prompt_used: sanitizedPrompt,
             is_public: false
           });
 

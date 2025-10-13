@@ -13,6 +13,10 @@ import Storytelling from "./pages/Storytelling";
 import AIChat from "./pages/AIChat";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import Examples from "./pages/Examples";
+import Templates from "./pages/Templates";
+import About from "./pages/About";
+import Contact from "./pages/Contact";
 
 const queryClient = new QueryClient();
 
@@ -27,6 +31,10 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/examples" element={<Examples />} />
+              <Route path="/templates" element={<Templates />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/contact" element={<Contact />} />
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/storytelling" element={<ProtectedRoute><Storytelling /></ProtectedRoute>} />
               <Route path="/ai-chat" element={<ProtectedRoute><AIChat /></ProtectedRoute>} />

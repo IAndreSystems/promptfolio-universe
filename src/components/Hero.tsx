@@ -1,8 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Sparkles, Wand2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import heroBg from "@/assets/hero-bg.jpg";
 
 const Hero = () => {
+  const navigate = useNavigate();
+
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Background */}
@@ -37,11 +40,20 @@ const Hero = () => {
         </p>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-          <Button size="lg" className="bg-gradient-primary hover:opacity-90 transition-opacity group">
+          <Button 
+            size="lg" 
+            className="bg-gradient-primary hover:opacity-90 transition-opacity group"
+            onClick={() => navigate('/dashboard')}
+          >
             Start Creating
             <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </Button>
-          <Button size="lg" variant="outline" className="border-border hover:bg-card">
+          <Button 
+            size="lg" 
+            variant="outline" 
+            className="border-border hover:bg-card"
+            onClick={() => navigate('/examples')}
+          >
             <Wand2 className="mr-2 w-4 h-4" />
             Explore Examples
           </Button>
