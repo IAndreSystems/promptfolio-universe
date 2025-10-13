@@ -149,7 +149,7 @@ const Storytelling = () => {
                     setSelectedTemplate("");
                   }}
                   placeholder="Describe what you want to generate..."
-                  className="min-h-[120px] bg-glass-bg border-glass-border"
+                  className="min-h-[120px] border-glass-border"
                 />
               </div>
 

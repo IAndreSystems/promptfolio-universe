@@ -62,13 +62,13 @@ const Footer = () => {
           </p>
           
           <div className="flex items-center gap-4">
-            <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg hover:bg-primary/10 transition-colors">
+            <a href="https://www.linkedin.com/in/andres-mustafa-505779359/" target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg hover:bg-primary/10 transition-colors">
               <Linkedin className="w-5 h-5 text-muted-foreground hover:text-primary transition-colors" />
             </a>
-            <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg hover:bg-primary/10 transition-colors">
+            <a href="https://github.com/IAndreSystems" target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg hover:bg-primary/10 transition-colors">
               <Github className="w-5 h-5 text-muted-foreground hover:text-primary transition-colors" />
             </a>
-            <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg hover:bg-primary/10 transition-colors">
+            <a href="https://www.instagram.com/iandresystems/" target="_blank" rel="noopener noreferrer" className="p-2 rounded-lg hover:bg-primary/10 transition-colors">
               <Instagram className="w-5 h-5 text-muted-foreground hover:text-primary transition-colors" />
             </a>
           </div>
