@@ -17,6 +17,8 @@ import Examples from "./pages/Examples";
 import Templates from "./pages/Templates";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
+import MyPortfolios from "./pages/MyPortfolios";
+import PortfolioView from "./pages/PortfolioView";
 
 const queryClient = new QueryClient();
 
@@ -33,8 +35,10 @@ const App = () => (
               <Route path="/auth" element={<Auth />} />
               <Route path="/examples" element={<Examples />} />
               <Route path="/templates" element={<Templates />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/contact" element={<Contact />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/my-portfolios" element={<ProtectedRoute><MyPortfolios /></ProtectedRoute>} />
+          <Route path="/portfolio/:id" element={<PortfolioView />} />
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
               <Route path="/storytelling" element={<ProtectedRoute><Storytelling /></ProtectedRoute>} />
               <Route path="/ai-chat" element={<ProtectedRoute><AIChat /></ProtectedRoute>} />

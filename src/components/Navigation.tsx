@@ -40,7 +40,10 @@ const Navigation = () => {
             ) : (
               <>
                 <Link to="/dashboard" className={`text-sm transition-colors ${location.pathname === '/dashboard' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}>
-                  Dashboard
+                  Projects
+                </Link>
+                <Link to="/my-portfolios" className={`text-sm transition-colors ${location.pathname === '/my-portfolios' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}>
+                  Portfolios
                 </Link>
                 <Link to="/storytelling" className={`text-sm transition-colors ${location.pathname === '/storytelling' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}>
                   Storytelling

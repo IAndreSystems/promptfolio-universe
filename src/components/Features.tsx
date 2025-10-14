@@ -1,5 +1,6 @@
 import { Palette, Wand2, Zap, Layout, Sparkles, Share2 } from "lucide-react";
 import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 
 const features = [
@@ -8,43 +9,51 @@ const features = [
     title: "AI Visual Storytelling",
     description: "Transform your ideas into compelling visual narratives with AI-powered generation.",
     gradient: "from-purple to-blue",
+    link: "/storytelling",
   },
   {
     icon: Layout,
     title: "Customizable Portfolios",
     description: "Design your portfolio exactly how you want it with flexible layouts and themes.",
     gradient: "from-blue to-cyan",
+    link: "/templates",
   },
   {
     icon: Wand2,
     title: "Smart Content Creation",
     description: "Generate descriptions, titles, and metadata automatically with AI assistance.",
     gradient: "from-cyan to-purple",
+    link: "/ai-chat",
   },
   {
     icon: Zap,
     title: "Lightning Fast",
     description: "Build and deploy your portfolio in minutes, not hours. Optimized for speed.",
     gradient: "from-purple to-blue",
+    link: "/dashboard",
   },
   {
     icon: Sparkles,
     title: "AI Enhancement",
     description: "Enhance your images and content with cutting-edge AI technology.",
     gradient: "from-blue to-cyan",
+    link: "/examples",
   },
   {
     icon: Share2,
     title: "Easy Sharing",
     description: "Share your portfolio across platforms with optimized previews and links.",
     gradient: "from-cyan to-purple",
+    link: "/examples",
   },
 ];
 
 const Features = () => {
+  const navigate = useNavigate();
+  
   useEffect(() => {
       const featuresEl = document.getElementById("features");
-      featuresEl.scrollIntoView({ behavior: "smooth" });
+      featuresEl?.scrollIntoView({ behavior: "smooth" });
     }, []);
   return (
     <section id="features" className="py-24 relative">
@@ -63,7 +72,8 @@ const Features = () => {
           {features.map((feature, index) => (
             <div
               key={index}
-              className="group relative p-6 rounded-2xl border border-border/50 bg-gradient-card backdrop-blur-sm hover:border-primary/50 transition-all duration-300 hover:shadow-[0_0_30px_rgba(147,51,234,0.2)]"
+              onClick={() => navigate(feature.link)}
+              className="group relative p-6 rounded-2xl border border-border/50 bg-gradient-card backdrop-blur-sm hover:border-primary/50 transition-all duration-300 hover:shadow-[0_0_30px_rgba(147,51,234,0.2)] cursor-pointer"
             >
               <div className={`inline-flex p-3 rounded-xl bg-gradient-to-br ${feature.gradient} mb-4 group-hover:scale-110 transition-transform duration-300`}>
                 <feature.icon className="w-6 h-6 text-white" />

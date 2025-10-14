@@ -1,34 +1,36 @@
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
 import { Layout, Palette, Sparkles, Zap } from "lucide-react";
-import { useEffect } from "react";
+import CreatePortfolioDialog from "@/components/CreatePortfolioDialog";
+import { useAuth } from "@/hooks/useAuth";
 
 const templates = [
   {
-    id: 1,
+    id: "creative-portfolio",
     name: "Creative Portfolio",
     description: "Perfect for designers and artists",
     icon: Palette,
     gradient: "from-purple to-blue",
   },
   {
-    id: 2,
+    id: "developer-showcase",
     name: "Developer Showcase",
     description: "Highlight your coding projects",
     icon: Zap,
     gradient: "from-blue to-cyan",
   },
   {
-    id: 3,
+    id: "minimal-portfolio",
     name: "Minimal Portfolio",
     description: "Clean and professional layout",
     icon: Layout,
     gradient: "from-cyan to-purple",
   },
   {
-    id: 4,
+    id: "ai-gallery",
     name: "AI Gallery",
     description: "Showcase AI-generated artwork",
     icon: Sparkles,
@@ -38,10 +40,23 @@ const templates = [
 
 const Templates = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>();
+  
   useEffect(() => {
     const templatesEl = document.getElementById("templates");
-    templatesEl.scrollIntoView({ behavior: "smooth" });
+    templatesEl?.scrollIntoView({ behavior: "smooth" });
   }, []);
+
+  const handleUseTemplate = (templateId: string) => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+    setSelectedTemplate(templateId);
+    setDialogOpen(true);
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground" id="templates">
@@ -78,7 +93,7 @@ const Templates = () => {
 
                 <Button 
                   className="w-full bg-gradient-primary hover:opacity-90"
-                  onClick={() => navigate('/dashboard')}
+                  onClick={() => handleUseTemplate(template.id)}
                 >
                   Use Template
                 </Button>
@@ -87,6 +102,12 @@ const Templates = () => {
           </div>
         </div>
       </main>
+
+      <CreatePortfolioDialog 
+        open={dialogOpen} 
+        onOpenChange={setDialogOpen}
+        selectedTemplate={selectedTemplate}
+      />
 
       <Footer />
     </div>

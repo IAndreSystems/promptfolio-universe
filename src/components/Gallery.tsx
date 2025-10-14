@@ -1,4 +1,5 @@
 import { ExternalLink } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import project1 from "@/assets/project-1.jpg";
 import project2 from "@/assets/project-2.jpg";
 import project3 from "@/assets/project-3.jpg";
@@ -28,6 +29,8 @@ const projects = [
 ];
 
 const Gallery = () => {
+  const navigate = useNavigate();
+  
   return (
     <section id="gallery" className="py-24 relative">
       <div className="container mx-auto px-6">
@@ -65,7 +68,10 @@ const Gallery = () => {
                         {project.title}
                       </h3>
                     </div>
-                    <button className="p-2 rounded-lg bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-colors">
+                    <button 
+                      onClick={() => navigate('/examples')}
+                      className="p-2 rounded-lg bg-white/10 backdrop-blur-sm hover:bg-white/20 transition-colors"
+                    >
                       <ExternalLink className="w-5 h-5 text-white" />
                     </button>
                   </div>
