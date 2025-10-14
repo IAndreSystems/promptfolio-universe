@@ -3,6 +3,7 @@ import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Layout, Palette, Sparkles, Zap } from "lucide-react";
+import { useEffect } from "react";
 
 const templates = [
   {
@@ -37,9 +38,13 @@ const templates = [
 
 const Templates = () => {
   const navigate = useNavigate();
+  useEffect(() => {
+    const templatesEl = document.getElementById("templates");
+    templatesEl.scrollIntoView({ behavior: "smooth" });
+  }, []);
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground" id="templates">
       <Navigation />
       
       <main className="pt-24 pb-16">

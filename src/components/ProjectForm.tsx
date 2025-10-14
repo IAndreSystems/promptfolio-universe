@@ -135,7 +135,7 @@ const ProjectForm = ({ project, onSuccess }: ProjectFormProps) => {
           value={formData.title}
           onChange={(e) => setFormData({ ...formData, title: e.target.value })}
           placeholder="My Amazing Project"
-          className="bg-glass-bg border-glass-border"
+          className="border-glass-border"
         />
       </div>
 
@@ -146,7 +146,7 @@ const ProjectForm = ({ project, onSuccess }: ProjectFormProps) => {
           value={formData.category}
           onChange={(e) => setFormData({ ...formData, category: e.target.value })}
           placeholder="Digital Art, UI/UX, 3D Design..."
-          className="bg-glass-bg border-glass-border"
+          className="border-glass-border"
         />
       </div>
 
@@ -157,7 +157,7 @@ const ProjectForm = ({ project, onSuccess }: ProjectFormProps) => {
           value={formData.description}
           onChange={(e) => setFormData({ ...formData, description: e.target.value })}
           placeholder="Describe your project..."
-          className="min-h-[100px] bg-glass-bg border-glass-border"
+          className="min-h-[100px] border-glass-border"
         />
       </div>
 
@@ -202,7 +202,7 @@ const ProjectForm = ({ project, onSuccess }: ProjectFormProps) => {
               setImagePreview(e.target.value);
             }}
             placeholder="https://example.com/image.jpg"
-            className="bg-glass-bg border-glass-border"
+            className="border-glass-border"
           />
         </div>
       </div>
@@ -214,7 +214,7 @@ const ProjectForm = ({ project, onSuccess }: ProjectFormProps) => {
           value={formData.project_url}
           onChange={(e) => setFormData({ ...formData, project_url: e.target.value })}
           placeholder="https://your-project.com"
-          className="bg-glass-bg border-glass-border"
+          className="border-glass-border"
         />
       </div>
 

@@ -1,8 +1,11 @@
 import { Button } from "@/components/ui/button";
+import ScrollLink from "@/components/ui/scrolllink";
 import { Sparkles, Github, Linkedin, Instagram } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 const Footer = () => {
+  const navigate = useNavigate();
   return (
     <footer className="relative border-t border-border/50 bg-card/50 backdrop-blur-sm">
       <div className="container mx-auto px-6 py-12">
@@ -15,7 +18,9 @@ const Footer = () => {
           <p className="text-muted-foreground mb-6 max-w-xl mx-auto">
             Join thousands of creators showcasing their AI-powered work
           </p>
-          <Button size="lg" className="bg-gradient-primary hover:opacity-90 transition-opacity">
+          <Button size="lg" className="bg-gradient-primary hover:opacity-90 transition-opacity"
+          onClick={() => navigate('/dashboard')}
+          >
             Get Started Free
           </Button>
         </div>
@@ -38,17 +43,17 @@ const Footer = () => {
           <div>
             <h3 className="font-semibold mb-4">Product</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link to="/#features" className="hover:text-foreground transition-colors">Features</Link></li>
-              <li><Link to="/templates" className="hover:text-foreground transition-colors">Templates</Link></li>
-              <li><Link to="/examples" className="hover:text-foreground transition-colors">Examples</Link></li>
+              <li><ScrollLink to="/" sectionId="features">Features</ScrollLink></li>
+              <li><ScrollLink to="/templates" sectionId="templates">Templates</ScrollLink></li>
+              <li><ScrollLink to="/examples" sectionId="examples">Examples</ScrollLink></li>
             </ul>
           </div>
 
           <div>
             <h3 className="font-semibold mb-4">Company</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><Link to="/about" className="hover:text-foreground transition-colors">About</Link></li>
-              <li><Link to="/contact" className="hover:text-foreground transition-colors">Contact</Link></li>
+              <li><ScrollLink to="/about" sectionId="about" className="hover:text-foreground transition-colors">About</ScrollLink></li>
+              <li><ScrollLink to="/contact" sectionId="contact" className="hover:text-foreground transition-colors">Contact</ScrollLink></li>
             </ul>
           </div>
         </div>

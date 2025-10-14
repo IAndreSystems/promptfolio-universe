@@ -7,6 +7,7 @@ import ProjectForm from "./ProjectForm";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAnalytics } from "@/hooks/useAnalytics";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ProjectCardProps {
   project: Project;
@@ -123,14 +124,16 @@ const ProjectCard = ({ project }: ProjectCardProps) => {
       </div>
 
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="max-w-2xl bg-glass-bg border-glass-border">
+        <DialogContent className="max-w-2xl border-glass-border">
           <DialogHeader>
             <DialogTitle className="text-2xl">Edit Project</DialogTitle>
           </DialogHeader>
+          <ScrollArea className="h-[400px] w-full">
           <ProjectForm 
             project={project} 
             onSuccess={() => setIsEditOpen(false)} 
           />
+          </ScrollArea>
         </DialogContent>
       </Dialog>
     </>
