@@ -1,10 +1,15 @@
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { Sparkles, Zap, Heart } from "lucide-react";
+import { useEffect } from "react";
 
 const About = () => {
+  useEffect(() => {
+      const aboutEl = document.getElementById("about");
+      aboutEl.scrollIntoView({ behavior: "smooth" });
+    }, []);
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground" id="about">
       <Navigation />
       
       <main className="pt-24 pb-16">

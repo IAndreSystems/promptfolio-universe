@@ -7,8 +7,13 @@ import { Label } from "@/components/ui/label";
 import { Mail, MessageSquare, Send } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useEffect } from "react";
 
 const Contact = () => {
+  useEffect(() => {
+      const contactEl = document.getElementById("contact");
+      contactEl.scrollIntoView({ behavior: "smooth" });
+    }, []);
   const { toast } = useToast();
   const [formData, setFormData] = useState({
     name: "",
@@ -26,7 +31,7 @@ const Contact = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground" id="contact">
       <Navigation />
       
       <main className="pt-24 pb-16">

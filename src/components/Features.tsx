@@ -1,4 +1,6 @@
 import { Palette, Wand2, Zap, Layout, Sparkles, Share2 } from "lucide-react";
+import { useEffect } from "react";
+
 
 const features = [
   {
@@ -40,6 +42,10 @@ const features = [
 ];
 
 const Features = () => {
+  useEffect(() => {
+      const featuresEl = document.getElementById("features");
+      featuresEl.scrollIntoView({ behavior: "smooth" });
+    }, []);
   return (
     <section id="features" className="py-24 relative">
       <div className="container mx-auto px-6">
