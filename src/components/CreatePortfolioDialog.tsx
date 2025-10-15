@@ -6,7 +6,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { usePortfolios } from "@/hooks/usePortfolios";
-import { Wand2 } from "lucide-react";
+import { Wand2, Sparkles } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Switch } from "@/components/ui/switch";
 
 interface CreatePortfolioDialogProps {
   open: boolean;
@@ -17,6 +19,8 @@ interface CreatePortfolioDialogProps {
 const CreatePortfolioDialog = ({ open, onOpenChange, selectedTemplate }: CreatePortfolioDialogProps) => {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [prompt, setPrompt] = useState("");
+  const [useAI, setUseAI] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const { createPortfolio } = usePortfolios();
   const { toast } = useToast();
@@ -33,7 +37,7 @@ const CreatePortfolioDialog = ({ open, onOpenChange, selectedTemplate }: CreateP
 
     setIsLoading(true);
     try {
-      await createPortfolio({
+      const portfolio = await createPortfolio({
         title: title.trim(),
         description: description.trim() || null,
         template_id: selectedTemplate || null,
@@ -42,13 +46,27 @@ const CreatePortfolioDialog = ({ open, onOpenChange, selectedTemplate }: CreateP
         metadata: {},
       });
 
+      if (useAI && portfolio) {
+        const { data, error } = await supabase.functions.invoke('generate-portfolio', {
+          body: {
+            portfolioId: portfolio.id,
+            prompt: prompt.trim() || undefined,
+            templateId: selectedTemplate,
+            language: 'en'
+          }
+        });
+
+        if (error) throw error;
+      }
+
       toast({
         title: "Portfolio created",
-        description: "Your new portfolio is ready",
+        description: useAI ? "Your AI-powered portfolio is ready" : "Your new portfolio is ready",
       });
 
       setTitle("");
       setDescription("");
+      setPrompt("");
       onOpenChange(false);
     } catch (error: any) {
       toast({
@@ -74,6 +92,31 @@ const CreatePortfolioDialog = ({ open, onOpenChange, selectedTemplate }: CreateP
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="useAI" className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-primary" />
+              AI-Powered Generation
+            </Label>
+            <Switch
+              id="useAI"
+              checked={useAI}
+              onCheckedChange={setUseAI}
+            />
+          </div>
+
+          {useAI && (
+            <div className="space-y-2">
+              <Label htmlFor="prompt">AI Prompt (optional)</Label>
+              <Textarea
+                id="prompt"
+                placeholder="Describe what you want your portfolio to showcase... (e.g., 'Create a portfolio highlighting my web development projects and design skills')"
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                rows={3}
+              />
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="title">Portfolio Title *</Label>
             <Input
@@ -88,10 +131,10 @@ const CreatePortfolioDialog = ({ open, onOpenChange, selectedTemplate }: CreateP
             <Label htmlFor="description">Description</Label>
             <Textarea
               id="description"
-              placeholder="Describe your portfolio..."
+              placeholder="Brief description of your portfolio..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              rows={3}
+              rows={2}
             />
           </div>
 

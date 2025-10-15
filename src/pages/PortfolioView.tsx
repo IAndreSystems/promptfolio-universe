@@ -2,78 +2,91 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
-import { Portfolio, PortfolioSection } from "@/hooks/usePortfolios";
+import { usePortfolios, PortfolioSection } from "@/hooks/usePortfolios";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Pencil } from "lucide-react";
+import { PortfolioSectionEditor } from "@/components/PortfolioSectionEditor";
+import { useAuth } from "@/hooks/useAuth";
+import { Share2, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const PortfolioView = () => {
-  const { id } = useParams<{ id: string }>();
-  const { user } = useAuth();
+  const { id } = useParams();
   const navigate = useNavigate();
-  const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const { portfolios, getSections, updateSection, deleteSection, updatePortfolio, loading } = usePortfolios();
   const [sections, setSections] = useState<PortfolioSection[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loadingSections, setLoadingSections] = useState(true);
+
+  const portfolio = portfolios.find(p => p.id === id);
+  const canEdit = user && portfolio?.user_id === user.id;
 
   useEffect(() => {
-    if (id) {
-      loadPortfolio();
-    }
+    const loadSections = async () => {
+      if (id) {
+        setLoadingSections(true);
+        try {
+          const data = await getSections(id);
+          setSections(data || []);
+        } catch (error) {
+          console.error('Error loading sections:', error);
+        } finally {
+          setLoadingSections(false);
+        }
+      }
+    };
+
+    loadSections();
   }, [id]);
 
-  const loadPortfolio = async () => {
-    if (!id) return;
-
-    setLoading(true);
+  const handleUpdateSection = async (sectionId: string, updates: Partial<PortfolioSection>) => {
     try {
-      // Load portfolio
-      const { data: portfolioData, error: portfolioError } = await supabase
-        .from('portfolios')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (portfolioError) throw portfolioError;
-
-      // Check if user can view this portfolio
-      if (!portfolioData.is_public && portfolioData.user_id !== user?.id) {
-        setError("You don't have permission to view this portfolio");
-        setLoading(false);
-        return;
-      }
-
-      setPortfolio({ ...portfolioData, metadata: portfolioData.metadata as Record<string, any> });
-
-      // Load sections
-      const { data: sectionsData, error: sectionsError } = await supabase
-        .from('portfolio_sections')
-        .select('*')
-        .eq('portfolio_id', id)
-        .order('order_index', { ascending: true });
-
-      if (sectionsError) throw sectionsError;
-      setSections((sectionsData || []).map(s => ({ ...s, metadata: s.metadata as Record<string, any> })));
+      await updateSection(sectionId, updates);
+      setSections(sections.map(s => s.id === sectionId ? { ...s, ...updates } : s));
+      toast({ title: "Section updated" });
     } catch (error: any) {
-      console.error('Error loading portfolio:', error);
-      setError(error.message);
-    } finally {
-      setLoading(false);
+      toast({ variant: "destructive", title: "Error", description: error.message });
     }
   };
 
-  const canEdit = user && portfolio && user.id === portfolio.user_id;
+  const handleDeleteSection = async (sectionId: string) => {
+    try {
+      await deleteSection(sectionId);
+      setSections(sections.filter(s => s.id !== sectionId));
+      toast({ title: "Section deleted" });
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Error", description: error.message });
+    }
+  };
 
-  if (loading) {
+  const handleToggleVisibility = async () => {
+    if (!portfolio) return;
+    try {
+      await updatePortfolio(portfolio.id, { is_public: !portfolio.is_public });
+      toast({
+        title: portfolio.is_public ? "Portfolio made private" : "Portfolio made public",
+      });
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Error", description: error.message });
+    }
+  };
+
+  const handleShare = () => {
+    const url = window.location.href;
+    navigator.clipboard.writeText(url);
+    toast({ title: "Link copied to clipboard" });
+  };
+
+  if (loading || loadingSections) {
     return (
       <div className="min-h-screen bg-background">
         <Navigation />
         <main className="pt-24 pb-16">
-          <div className="container mx-auto px-6 max-w-4xl">
-            <Skeleton className="h-12 w-3/4 mb-4" />
-            <Skeleton className="h-6 w-full mb-8" />
+          <div className="container mx-auto px-6">
+            <Skeleton className="h-12 w-64 mb-4" />
+            <Skeleton className="h-6 w-96 mb-8" />
             <div className="space-y-6">
               <Skeleton className="h-48 w-full" />
               <Skeleton className="h-48 w-full" />
@@ -84,21 +97,20 @@ const PortfolioView = () => {
     );
   }
 
-  if (error || !portfolio) {
+  if (!portfolio) {
     return (
       <div className="min-h-screen bg-background">
         <Navigation />
         <main className="pt-24 pb-16">
-          <div className="container mx-auto px-6 max-w-4xl text-center">
+          <div className="container mx-auto px-6 text-center">
             <h1 className="text-4xl font-bold mb-4">Portfolio Not Found</h1>
-            <p className="text-muted-foreground mb-8">{error || "This portfolio doesn't exist or has been removed."}</p>
+            <p className="text-muted-foreground mb-8">The portfolio you're looking for doesn't exist.</p>
             <Button onClick={() => navigate('/examples')} variant="outline">
               <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Examples
+              Back to Gallery
             </Button>
           </div>
         </main>
-        <Footer />
       </div>
     );
   }
@@ -109,79 +121,59 @@ const PortfolioView = () => {
       
       <main className="pt-24 pb-16">
         <div className="container mx-auto px-6 max-w-4xl">
-          <div className="flex items-center justify-between mb-8">
-            <Button
-              variant="ghost"
-              onClick={() => navigate(-1)}
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back
-            </Button>
-            
-            {canEdit && (
-              <Button
-                variant="outline"
-                onClick={() => navigate(`/portfolio/${id}/edit`)}
-              >
-                <Pencil className="w-4 h-4 mr-2" />
-                Edit Portfolio
-              </Button>
-            )}
-          </div>
-
           <div className="mb-12">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">
-              {portfolio.title}
-            </h1>
+            <div className="flex items-start justify-between mb-4">
+              <h1 className="text-4xl md:text-5xl font-bold">
+                <span className="bg-gradient-primary bg-clip-text text-transparent">
+                  {portfolio.title}
+                </span>
+              </h1>
+              
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={handleShare}>
+                  <Share2 className="w-4 h-4 mr-2" />
+                  Share
+                </Button>
+                {canEdit && (
+                  <Button variant="outline" size="sm" onClick={handleToggleVisibility}>
+                    {portfolio.is_public ? (
+                      <><Eye className="w-4 h-4 mr-2" />Public</>
+                    ) : (
+                      <><EyeOff className="w-4 h-4 mr-2" />Private</>
+                    )}
+                  </Button>
+                )}
+              </div>
+            </div>
+            
             {portfolio.description && (
-              <p className="text-xl text-muted-foreground">
-                {portfolio.description}
-              </p>
-            )}
-            {portfolio.template_id && (
-              <p className="text-sm text-muted-foreground mt-2">
-                Template: {portfolio.template_id}
-              </p>
+              <p className="text-xl text-muted-foreground">{portfolio.description}</p>
             )}
           </div>
 
-          <div className="space-y-8">
-            {sections.length === 0 ? (
-              <div className="text-center py-16 border border-dashed border-border rounded-2xl">
-                <p className="text-muted-foreground">
+          {sections.length === 0 ? (
+            <Card className="border-dashed">
+              <CardContent className="py-12 text-center">
+                <p className="text-muted-foreground mb-4">
                   {canEdit 
-                    ? "This portfolio is empty. Add some sections to get started!"
-                    : "This portfolio doesn't have any content yet."}
+                    ? "No sections yet. This portfolio was just created!" 
+                    : "This portfolio is empty."}
                 </p>
-              </div>
-            ) : (
-              sections.map((section) => (
-                <div
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-6">
+              {sections.map((section) => (
+                <PortfolioSectionEditor
                   key={section.id}
-                  className="p-6 rounded-2xl border border-border/50 bg-gradient-card backdrop-blur-sm"
-                >
-                  {section.title && (
-                    <h2 className="text-2xl font-bold mb-4">{section.title}</h2>
-                  )}
-                  {section.image_url && (
-                    <img
-                      src={section.image_url}
-                      alt={section.title || 'Section image'}
-                      className="w-full rounded-lg mb-4 object-cover"
-                      loading="lazy"
-                    />
-                  )}
-                  {section.content && (
-                    <div className="prose prose-invert max-w-none">
-                      <p className="text-muted-foreground whitespace-pre-wrap">
-                        {section.content}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
+                  section={section}
+                  onUpdate={handleUpdateSection}
+                  onDelete={handleDeleteSection}
+                  canEdit={!!canEdit}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </main>
 
