@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import Navigation from "@/components/Navigation";
 import Footer from "@/components/Footer";
 import { usePortfolios, PortfolioSection } from "@/hooks/usePortfolios";
@@ -22,6 +23,10 @@ const PortfolioView = () => {
 
   const portfolio = portfolios.find(p => p.id === id);
   const canEdit = user && portfolio?.user_id === user.id;
+
+  // Generate OG image from first section image or use a default
+  const ogImage = sections[0]?.image_url || '/placeholder.svg';
+  const ogDescription = portfolio?.description || sections[0]?.content?.substring(0, 160) || 'View my portfolio';
 
   useEffect(() => {
     const loadSections = async () => {
@@ -117,6 +122,25 @@ const PortfolioView = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <Helmet>
+        <title>{portfolio?.title || 'Portfolio'} | AI Portfolio Generator</title>
+        <meta name="description" content={ogDescription} />
+        
+        {/* Open Graph / Facebook */}
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={window.location.href} />
+        <meta property="og:title" content={portfolio?.title || 'Portfolio'} />
+        <meta property="og:description" content={ogDescription} />
+        <meta property="og:image" content={ogImage} />
+
+        {/* Twitter */}
+        <meta property="twitter:card" content="summary_large_image" />
+        <meta property="twitter:url" content={window.location.href} />
+        <meta property="twitter:title" content={portfolio?.title || 'Portfolio'} />
+        <meta property="twitter:description" content={ogDescription} />
+        <meta property="twitter:image" content={ogImage} />
+      </Helmet>
+      
       <Navigation />
       
       <main className="pt-24 pb-16">

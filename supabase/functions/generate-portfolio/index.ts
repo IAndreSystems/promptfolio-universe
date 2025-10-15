@@ -13,9 +13,30 @@ serve(async (req) => {
   }
 
   try {
-    const { portfolioId, prompt, templateId, language = 'en' } = await req.json();
+    const body = await req.json();
+    console.log('📥 Incoming request body:', JSON.stringify(body, null, 2));
     
-    const authHeader = req.headers.get('Authorization')!;
+    const { portfolioId, prompt, templateId, language = 'en', images = [] } = body;
+    
+    // Defensive checks
+    if (!portfolioId) {
+      console.error('❌ Missing portfolioId');
+      return new Response(
+        JSON.stringify({ error: 'portfolioId is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('❌ Missing Authorization header');
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized - missing auth header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    console.log('🔐 Creating Supabase client with auth header');
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
@@ -23,9 +44,25 @@ serve(async (req) => {
     );
 
     // Get user data for context
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    if (!user) throw new Error('Unauthorized');
+    console.log('👤 Fetching user data...');
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+    if (userError) {
+      console.error('❌ Auth error:', userError);
+      return new Response(
+        JSON.stringify({ error: 'Authentication failed', details: userError.message }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    if (!user) {
+      console.error('❌ No user found');
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized - no user found' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    console.log('✅ User authenticated:', user.id);
 
+    console.log('📊 Fetching user profile and projects...');
     const { data: profile } = await supabaseClient
       .from('profiles')
       .select('*')
@@ -37,6 +74,9 @@ serve(async (req) => {
       .select('title, description, category')
       .eq('user_id', user.id)
       .limit(5);
+    
+    console.log('📝 Profile:', profile ? 'found' : 'not found');
+    console.log('📁 Projects:', projects?.length || 0);
 
     // Build AI prompt based on template and user data
     const templateContext = getTemplateContext(templateId);
@@ -58,10 +98,18 @@ Generate 4-6 portfolio sections with titles and rich content. Return ONLY valid 
 }`;
 
     const userPrompt = prompt || `Create a ${templateContext.name} portfolio showcasing my work and skills.`;
+    console.log('💬 User prompt:', userPrompt);
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
+    if (!LOVABLE_API_KEY) {
+      console.error('❌ LOVABLE_API_KEY not configured');
+      return new Response(
+        JSON.stringify({ error: 'AI service not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
+    console.log('🤖 Calling AI with model: google/gemini-2.5-flash');
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -80,53 +128,99 @@ Generate 4-6 portfolio sections with titles and rich content. Return ONLY valid 
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('AI API error:', response.status, errorText);
-      throw new Error(`AI generation failed: ${response.status}`);
+      console.error('❌ AI API error:', response.status, errorText);
+      
+      if (response.status === 429) {
+        return new Response(
+          JSON.stringify({ error: 'AI service rate limit exceeded. Please try again later.' }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ error: 'AI service credits exhausted. Please add credits to continue.' }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      return new Response(
+        JSON.stringify({ error: `AI generation failed: ${response.status}`, details: errorText }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const aiData = await response.json();
+    console.log('🎯 AI response received');
     const content = aiData.choices[0].message.content;
+    console.log('📄 AI content (first 200 chars):', content.substring(0, 200));
     
     // Parse JSON from AI response
+    console.log('🔍 Parsing AI response...');
     let sections;
     try {
       const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error('No JSON found in response');
+      if (!jsonMatch) {
+        console.error('❌ No JSON found in AI response');
+        throw new Error('No JSON found in response');
+      }
       const parsed = JSON.parse(jsonMatch[0]);
       sections = parsed.sections;
+      
+      if (!Array.isArray(sections)) {
+        console.error('❌ Sections is not an array:', sections);
+        throw new Error('Invalid sections format');
+      }
+      
+      console.log('✅ Parsed sections:', sections.length);
     } catch (e) {
-      console.error('Failed to parse AI response:', content);
-      throw new Error('Invalid AI response format');
+      console.error('❌ Failed to parse AI response:', e.message);
+      console.error('Response content:', content);
+      return new Response(
+        JSON.stringify({ error: 'Invalid AI response format', details: e.message }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
-    // Save sections to database
+    // Save sections to database, incorporating uploaded images if available
+    console.log('💾 Preparing to save sections to database...');
     const sectionsToInsert = sections.map((section: any, index: number) => ({
       portfolio_id: portfolioId,
       section_type: section.section_type || 'about',
       title: section.title,
       content: section.content,
+      image_url: images[index] || section.image_url || null,
       order_index: index,
       metadata: {}
     }));
 
+    console.log('📝 Inserting sections:', sectionsToInsert.length);
     const { error: insertError } = await supabaseClient
       .from('portfolio_sections')
       .insert(sectionsToInsert);
 
     if (insertError) {
-      console.error('Error inserting sections:', insertError);
-      throw insertError;
+      console.error('❌ Error inserting sections:', insertError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to save portfolio sections', details: insertError.message }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
+    console.log('✅ Portfolio generation successful!');
     return new Response(
       JSON.stringify({ success: true, sections: sectionsToInsert }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
-    console.error('Error in generate-portfolio:', error);
+    console.error('❌ Error in generate-portfolio:', error);
+    console.error('Stack trace:', error.stack);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message || 'Unknown error occurred',
+        details: error.stack || 'No stack trace available'
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
